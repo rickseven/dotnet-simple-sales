@@ -1,0 +1,45 @@
+﻿@{
+    ViewData["Title"] = "Update User";
+    var data = ViewBag.User;
+}
+<h1>@ViewData["Title"]</h1>
+<form id="form" method="post">
+    <input type="hidden" id="id" value="@data.Id" />
+    <div class="form-group">
+        <label for="email">Email address</label>
+        <input type="email" class="form-control" id="email" placeholder="Enter email" value="@data.Email">
+    </div>
+    <a href="/User"><span class="btn btn-warning">Back</span></a>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+@section Scripts
+{
+    <script>
+        $(document).ready(function() {
+            $('#form').on('submit', function(e) {
+                e.preventDefault();
+                var data = new Object();
+                data.Id = $("#id").val();
+                data.Email = $("#email").val();
+                $.ajax({
+                    type: "POST",
+                    url: "/User/Update",
+                    data: JSON.stringify(data),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function(res) {
+                        alert(res.message);
+                        window.location.href = "/User";
+                    },
+                    failure: function(res) {
+                        alert(res.message);
+                    },
+                    error: function(res) {
+                        alert(res.message);
+                    }
+                });
+            });
+        });
+    </script>
+}

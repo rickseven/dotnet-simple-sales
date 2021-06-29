@@ -1,0 +1,157 @@
+﻿@{
+    ViewData["Title"] = "Sales Report";
+    DateTime now = DateTime.Now;
+    var startDate = new DateTime(now.Year, now.Month, 1);
+    var endDate = startDate.AddMonths(1).AddDays(-1);
+}
+<h1>@ViewData["Title"]</h1>
+<br />
+<form id="form" method="post">
+    <div class="row">
+        <div class="col col-md-3">
+            <div class="form-group">
+                <label>Start Date</label>
+                <input id="startDate" class="form-control datepicker" data-date-format="yyyy-mm-dd" value="@startDate.AddMonths(-2).ToString("yyyy-MM-dd")" />
+            </div>
+        </div>
+        <div class="col col-md-3">
+            <div class="form-group">
+                <label>End Date</label>
+                <input id="endDate" class="form-control datepicker" data-date-format="yyyy-mm-dd" value="@endDate.ToString("yyyy-MM-dd")" />
+            </div>
+        </div>
+        <div class="col col-md-2">
+            <div class="form-group">
+                <label>&nbsp;</label>
+                <button type="submit" class="form-control btn btn-primary">Apply</button>
+            </div>
+        </div>
+    </div>
+</form>
+<br />
+<figure class="highcharts-figure">
+    <div id="container"></div>
+</figure>
+<br/>
+<table id="datatable" class="table table-striped table-bordered" style="width:100%">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Date</th>
+            <th>Total Price</th>
+        </tr>
+    </thead>
+</table>
+
+@section Scripts
+{
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <script>
+        var table;
+        $(document).ready(function () {
+
+            $('#startDate').datepicker();
+            $('#endDate').datepicker();
+
+            var startDate = $("#startDate").val();
+            var endDate = $("#endDate").val();
+
+            loadChartData(startDate, endDate);
+
+            $('#form').on('submit', function (e) {
+                e.preventDefault();
+                startDate = $("#startDate").val();
+                endDate = $("#endDate").val();
+                loadChartData(startDate, endDate);
+                table.ajax.url("Report/Get?start=" + startDate + "&end=" + endDate).load();
+            });
+
+            table = $("#datatable").DataTable({
+                "ajax": "Report/Get?start=" + startDate + "&end=" + endDate,
+                "scrollX": true,
+                "columns": [
+                    { data: null },
+                    { data: "product.name" },
+                    { data: "quantity" },
+                    { data: "date" },
+                    {
+                        render: function (data, type, row, meta) {
+                            var totalPrice = row.unitPrice * row.quantity;
+                            return formatRupiah(totalPrice.toString(), "Rp.");
+                        }
+                    }
+                ]
+            });
+
+            table.on('order.dt search.dt',
+                function () {
+                    table.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+                        cell.innerHTML = i + 1;
+                    });
+                }).draw();
+        });
+
+        function loadChartData(start, end) {
+            $.ajax({
+                type: "GET",
+                url: "/Report/GetChartData?start=" + start + "&end=" + end,
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (res) {
+                    loadChart(res.data);
+                },
+                failure: function (res) {
+                    alert(res.message);
+                },
+                error: function (res) {
+                    alert(res.message);
+                }
+            });
+        }
+
+        function loadChart(data) {
+            var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            var categories = [];
+            var datas = [];
+            for (var i = 0; i < data.length; i++) {
+                var month = parseInt(data[i].month);
+                var count = parseInt(data[i].count);
+                categories.push(months[month - 1]);
+                datas.push(count);
+            }
+            Highcharts.chart('container', {
+                chart: {
+                    type: 'line'
+                },
+                title: {
+                    text: 'Monthly Sales'
+                },
+                xAxis: {
+                    categories: categories
+                },
+                yAxis: {
+                    title: {
+                        text: 'Total Sales'
+                    }
+                },
+                plotOptions: {
+                    line: {
+                        dataLabels: {
+                            enabled: true
+                        },
+                        enableMouseTracking: false
+                    }
+                },
+                series: [{
+                    name: 'Product Sales',
+                    data: datas
+                }]
+            });
+        }  
+    </script>
+}
